@@ -21,6 +21,7 @@ use std::path::PathBuf;
 mod groth;
 mod marlin;
 mod silly;
+mod simple_dragonn;
 
 const TIMED_SECTION_LABEL: &str = "timed section";
 

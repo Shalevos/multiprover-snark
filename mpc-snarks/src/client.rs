@@ -30,6 +30,7 @@ mod groth;
 mod marlin;
 mod plonk;
 mod silly;
+mod simple_dragonn;
 
 arg_enum! {
     #[derive(PartialEq, Debug)]
