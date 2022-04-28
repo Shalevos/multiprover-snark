@@ -116,17 +116,16 @@ pub fn mpc_test_prove_and_verify(n_iters: usize) {
         println!("{}\n{}\n{}", a, b, c);
 
         // This should run the MPC version of Marlin for the circuit and generate a valid proof for regular Marlin
-        // TODO: reverse
+        // Essentially regular Marlin is run but over the MPC Field which abstracts away interaction between the parties when needed
         let mpc_proof = MpcMarlin::prove(&mpc_index_pk, circ, rng).unwrap();
         // We now "open" the proof to get the proof data in plaintext
-        // TODO: reverse
         let proof = pf_publicize(mpc_proof);
         
         // We verify the proof with the normal Marlin verifier and it passes
         let is_valid = LocalMarlin::verify(&index_vk, &inputs, &proof, rng).unwrap();
         assert!(is_valid);
 
-        // This is to show we really need to know c s.t. c = a•b o.w. verification fails
+        // This is to show we really need to know c s.t. c = a•b and that o.w. verification fails
         let public_a = a.reveal();
         let is_valid = LocalMarlin::verify(&index_vk, &[public_a], &proof, rng).unwrap();
         assert!(!is_valid);
