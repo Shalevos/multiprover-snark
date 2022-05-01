@@ -267,10 +267,14 @@ mod squarings {
                 // Create an mpc version of the prover index
                 let mpc_pk = IndexProverKey::from_public(pk);
 
+                // run the MPC computation
                 let a = <MpcPairingEngine<E> as PairingEngine>::Fr::rand(rng);
                 let b = <MpcPairingEngine<E> as PairingEngine>::Fr::rand(rng);
                 let mab = a*b;
+                // reveal output - as usual in MPC
                 let out = mab.reveal();
+                
+                // set output as the public input and the secret shares of the circuit input as the private input to marlin
                 let public_inputs = vec![out, out];
                 let computation_timer = start_timer!(|| "do the mpc (cheat)");
                 let circ_data = SimpleDragonnCircuit {
@@ -282,6 +286,7 @@ mod squarings {
                 MpcMultiNet::reset_stats();
                 let timer = start_timer!(|| timer_label);
                 let zk_rng = &mut test_rng();
+                // Run the mpc version of marlin
                 let proof = channel::without_cheating(|| {
                     KzgMarlin::<
                         <MpcPairingEngine<E> as PairingEngine>::Fr,
@@ -291,6 +296,8 @@ mod squarings {
                     .reveal()
                 });
                 end_timer!(timer);
+                
+                // verify using the regular version of marlin
                 assert!(KzgMarlin::<E::Fr, E>::verify(&vk, &public_inputs, &proof, rng).unwrap());
             }
         }
