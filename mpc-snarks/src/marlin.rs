@@ -131,3 +131,50 @@ pub fn mpc_test_prove_and_verify(n_iters: usize) {
         assert!(!is_valid);
     }
 }
+
+pub fn mpc_demo_dragons() {
+    let rng = &mut test_rng();
+
+    // First we create a setup for Marlin
+    let srs = LocalMarlin::universal_setup(100, 50, 100, rng).unwrap();
+    
+    // Now we initialize an empty circuit - this is just so we can generate the circuit data - common to prover and verifier
+    let empty_circuit: MySillyCircuit<Fr> = MySillyCircuit { a: None, b: None };
+    let (index_pk, index_vk) = LocalMarlin::index(&srs, empty_circuit.clone()).unwrap();
+    
+    // We now create an MPC version of the prover index (since we will fill it with secret shared inputs)
+    let mpc_index_pk = IndexProverKey::from_public(index_pk);
+
+    // This creates "secret-shared" data s.t. the king holds 2 and the rest hold the identity element of the field
+    let a = MpcField::<ark_bls12_377::Fr>::from(2u8);
+    let b = MpcField::<ark_bls12_377::Fr>::from(2u8);
+    
+    // We then instantiate the circuit's private inputs with the secret-shared data
+    let circ = MySillyCircuit {
+        a: Some(a),
+        b: Some(b),
+    };
+
+    // This runs the MPC to compute the result c = a•b
+    let mut c = a;
+    c *= &b;
+
+    // Now the participants reveal their shares of the output - this should be public
+    let inputs = vec![c.reveal()];
+    println!("{}\n{}\n{}", a, b, c);
+
+    // This should run the MPC version of Marlin for the circuit and generate a valid proof for regular Marlin
+    // Essentially regular Marlin is run but over the MPC Field which abstracts away interaction between the parties when needed
+    let mpc_proof = MpcMarlin::prove(&mpc_index_pk, circ, rng).unwrap();
+    // We now "open" the proof to get the proof data in plaintext
+    let proof = pf_publicize(mpc_proof);
+    
+    // We verify the proof with the normal Marlin verifier and it passes
+    let is_valid = LocalMarlin::verify(&index_vk, &inputs, &proof, rng).unwrap();
+    assert!(is_valid);
+
+    // This is to show we really need to know c s.t. c = a•b and that o.w. verification fails
+    let public_a = a.reveal();
+    let is_valid = LocalMarlin::verify(&index_vk, &[public_a], &proof, rng).unwrap();
+    assert!(!is_valid);
+}

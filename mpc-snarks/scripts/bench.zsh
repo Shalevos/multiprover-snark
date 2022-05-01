@@ -20,7 +20,7 @@ LABEL="timed section"
 
 
 function usage {
-  echo "Usage: $0 {groth16,marlin,plonk} {hbc,spdz,gsz,local,ark-local} N_SQUARINGS N_PARTIES" >&2
+  echo "Usage: $0 {groth16,marlin,plonk,dragon} {hbc,spdz,gsz,local,ark-local} N_SQUARINGS N_PARTIES" >&2
   exit 1
 }
 
@@ -29,7 +29,7 @@ if [ "$#" -ne 4 ] ; then
 fi
 
 case $proof in
-    groth16|marlin|plonk)
+    groth16|marlin|plonk|dragon)
         ;;
     *)
         usage
@@ -52,7 +52,7 @@ case $infra in
           #$BIN $i ./data/4 &
           if [ $i -eq 0 ]
           then
-            $BIN -p $proof -c squaring --computation-size $size mpc --hosts $NETWORK_CONFIG --party $i --alg $infra | rg "End: *$LABEL" | rg -o '[0-9][0-9.]*.s' &
+            $BIN -p $proof -c squaring --computation-size $size mpc --hosts $NETWORK_CONFIG --party $i --alg $infra & #| rg "End: *$LABEL" | rg -o '[0-9][0-9.]*.s' &
             pid=$!
           else
             $BIN -p $proof -c squaring --computation-size $size mpc --hosts $NETWORK_CONFIG --party $i --alg $infra > /dev/null &

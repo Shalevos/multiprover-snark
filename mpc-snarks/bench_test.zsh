@@ -2,7 +2,7 @@ set -xe
 
 cargo build --bin proof
 
-BIN=./target/debug/proof
+BIN=./target/release/proof
 
 BIN=$BIN ./scripts/bench.zsh groth16 local 10 2
 BIN=$BIN ./scripts/bench.zsh groth16 ark-local 10 2

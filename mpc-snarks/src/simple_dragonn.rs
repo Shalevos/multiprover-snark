@@ -6,8 +6,8 @@ use ark_relations::{
 
 #[derive(Clone)]
 pub struct SimpleDragonnCircuit<F: Field> {
-    pub left_dragonn: Option<F>,
-    pub right_dragonn: Option<F>,
+    pub a: Option<F>,
+    pub b: Option<F>,
 }
 
 impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for SimpleDragonnCircuit<ConstraintF> {
@@ -15,17 +15,25 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for SimpleDragonnCir
         self,
         cs: ConstraintSystemRef<ConstraintF>,
     ) -> Result<(), SynthesisError> {
-        let left_dragonn = cs.new_witness_variable(|| self.left_dragonn.ok_or(SynthesisError::AssignmentMissing))?;
-        let right_dragonn = cs.new_witness_variable(|| self.right_dragonn.ok_or(SynthesisError::AssignmentMissing))?;
+        let a = cs.new_witness_variable(|| self.a.ok_or(SynthesisError::AssignmentMissing))?;
+        let b = cs.new_witness_variable(|| self.b.ok_or(SynthesisError::AssignmentMissing))?;
         let c = cs.new_input_variable(|| {
-            let mut a = self.left_dragonn.ok_or(SynthesisError::AssignmentMissing)?;
-            let b = self.right_dragonn.ok_or(SynthesisError::AssignmentMissing)?;
+            let mut a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
+            let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
+
+            a.mul_assign(&b);
+            Ok(a)
+        })?;
+        let d = cs.new_input_variable(|| {
+            let mut a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
+            let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
 
             a.mul_assign(&b);
             Ok(a)
         })?;
 
-        cs.enforce_constraint(lc!() + left_dragonn, lc!() + right_dragonn, lc!() + c)?;
+        cs.enforce_constraint(lc!() + a, lc!() + b, lc!() + c)?;
+        cs.enforce_constraint(lc!() + a, lc!() + b, lc!() + d)?;
 
         Ok(())
     }

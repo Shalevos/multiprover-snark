@@ -209,6 +209,93 @@ mod squarings {
         }
     }
 
+    pub mod dragon {
+        use super::*;
+        use ark_ec::AffineCurve;
+        use ark_marlin::Marlin;
+        use ark_marlin::*;
+        use ark_poly::univariate::DensePolynomial;
+        use ark_poly_commit::marlin::marlin_pc::MarlinKZG10;
+        use simple_dragonn::SimpleDragonnCircuit;
+        use mpc_algebra::malicious_majority::{MpcField, MpcPairingEngine};
+
+        type KzgMarlin<Fr, E> = Marlin<Fr, MarlinKZG10<E, DensePolynomial<Fr>>, Blake2s>;
+        // type ME = MpcPairingEngine<ark_bls12_377::Bls12_377>;
+        // type Fr = ark_bls12_377::Fr;
+        // // type MFr = MpcField<Fr>;
+        // type MpcMarlin = Marlin<MFr, MpcMarlinKZG10, Blake2s>;
+        // type MpcMarlinKZG10 = MarlinKZG10<ME, DensePolynomial<MFr>>;
+        pub struct DragonBench;
+
+        impl SnarkBench for DragonBench {
+            fn local<E: PairingEngine>(n: usize, timer_label: &str) {
+                println!("Local Dragon Bench");
+                let rng = &mut test_rng();
+                let circ_no_data = SimpleDragonnCircuit {a: None, b: None};
+
+                let srs = KzgMarlin::<E::Fr, E>::universal_setup(2, 4, 3*3, rng).unwrap();
+                println!("1");
+                let (pk, vk) = KzgMarlin::<E::Fr, E>::index(&srs, circ_no_data).unwrap();
+                println!("2");
+
+                let a = E::Fr::rand(rng);
+                let b = E::Fr::rand(rng);
+                let c = vec![a*b, a*b];
+                let circ_data = SimpleDragonnCircuit {
+                    a: Some(a),
+                    b: Some(b)
+                };
+                let timer = start_timer!(|| timer_label);
+                let zk_rng = &mut test_rng();
+                println!("Before proving");
+                let proof = KzgMarlin::<E::Fr, E>::prove(&pk, circ_data, zk_rng).unwrap();
+                println!("After proving");
+                end_timer!(timer);
+                assert!(KzgMarlin::<E::Fr, E>::verify(&vk, &c, &proof, rng).unwrap());
+            }
+
+            fn mpc<E: PairingEngine, S: PairingShare<E>>(n: usize, timer_label: &str) {
+                println!("MPC Dragon Bench");
+                // Setting up the circuit - same as 1-prover
+                let rng = &mut test_rng();
+                let circ_no_data = SimpleDragonnCircuit {a: None, b: None};
+
+                let srs = KzgMarlin::<E::Fr, E>::universal_setup(2, 4, 3*3, rng).unwrap();
+
+                let (pk, vk) = KzgMarlin::<E::Fr, E>::index(&srs, circ_no_data).unwrap();
+                
+                // Create an mpc version of the prover index
+                let mpc_pk = IndexProverKey::from_public(pk);
+
+                let a = <MpcPairingEngine<E> as PairingEngine>::Fr::rand(rng);
+                let b = <MpcPairingEngine<E> as PairingEngine>::Fr::rand(rng);
+                let mab = a*b;
+                let out = mab.reveal();
+                let public_inputs = vec![out, out];
+                let computation_timer = start_timer!(|| "do the mpc (cheat)");
+                let circ_data = SimpleDragonnCircuit {
+                    a: Some(a),
+                    b: Some(b)
+                };
+                end_timer!(computation_timer);
+
+                MpcMultiNet::reset_stats();
+                let timer = start_timer!(|| timer_label);
+                let zk_rng = &mut test_rng();
+                let proof = channel::without_cheating(|| {
+                    KzgMarlin::<
+                        <MpcPairingEngine<E> as PairingEngine>::Fr,
+                        MpcPairingEngine<E>,
+                    >::prove(&mpc_pk, circ_data, zk_rng)
+                    .unwrap()
+                    .reveal()
+                });
+                end_timer!(timer);
+                assert!(KzgMarlin::<E::Fr, E>::verify(&vk, &public_inputs, &proof, rng).unwrap());
+            }
+        }
+    }
+
     pub mod plonk {
         use super::*;
         use ark_poly::univariate::DensePolynomial;
@@ -416,6 +503,7 @@ arg_enum! {
         Groth16,
         Marlin,
         Plonk,
+        Dragon
     }
 }
 
@@ -503,6 +591,12 @@ fn main() {
             opt.computation,
             opt.computation_size,
             squarings::marlin::MarlinBench,
+            TIMED_SECTION_LABEL,
+        ),
+        ProofSystem::Dragon => opt.field.run::<ark_bls12_377::Bls12_377, _>(
+            opt.computation,
+            opt.computation_size,
+            squarings::dragon::DragonBench,
             TIMED_SECTION_LABEL,
         ),
     }
