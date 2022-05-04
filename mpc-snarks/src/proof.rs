@@ -231,24 +231,26 @@ mod squarings {
             fn local<E: PairingEngine>(n: usize, timer_label: &str) {
                 println!("Local Dragon Bench");
                 let rng = &mut test_rng();
-                // let circ_no_data = SimpleDragonnCircuit {l1: None, l2: None, r1: None, r2: None};
-                let circ_no_data = SimpleDragonnCircuit {l1: None, l2: None};
+                let circ_no_data = SimpleDragonnCircuit {l1: None, l2: None, r1: None, r2: None};
+                // let circ_no_data = SimpleDragonnCircuit {l1: None, l2: None};
 
-                let srs = KzgMarlin::<E::Fr, E>::universal_setup(2, 4, 3*3, rng).unwrap();
+                let srs = KzgMarlin::<E::Fr, E>::universal_setup(10, 10, 50, rng).unwrap();
                 println!("1");
                 let (pk, vk) = KzgMarlin::<E::Fr, E>::index(&srs, circ_no_data).unwrap();
                 println!("2");
 
-                let l1 = <E as PairingEngine>::Fr::from(0u8);
-                let l2 = <E as PairingEngine>::Fr::from(2u8);
-                let r1 = <E as PairingEngine>::Fr::rand(rng);
+                let l1 = <E as PairingEngine>::Fr::from(1u8);
+                let l2 = <E as PairingEngine>::Fr::from(0u8);
+                let r1 = <E as PairingEngine>::Fr::from(0u8);
                 let r2 = <E as PairingEngine>::Fr::from(0u8);
-                let public_inputs = vec![];
+                let res = <E as PairingEngine>::Fr::from(1u8);
+
+                let public_inputs = vec![res];
                 let circ_data = SimpleDragonnCircuit {
                     l1: Some(l1),
                     l2: Some(l2),
-                    // r1: Some(r1),
-                    // r2: Some(r2)
+                    r1: Some(r1),
+                    r2: Some(r2),
                 };
                 let timer = start_timer!(|| timer_label);
                 let zk_rng = &mut test_rng();
@@ -263,10 +265,10 @@ mod squarings {
                 println!("MPC Dragon Bench");
                 // Setting up the circuit - same as 1-prover
                 let rng = &mut test_rng();
-                let circ_no_data = SimpleDragonnCircuit {l1: None, l2: None};
-                // let circ_no_data = SimpleDragonnCircuit {l1: None, l2: None, r1: None, r2: None};
+                // let circ_no_data = SimpleDragonnCircuit {l1: None, l2: None};
+                let circ_no_data = SimpleDragonnCircuit {l1: None, l2: None, r1: None, r2: None};
 
-                let srs = KzgMarlin::<E::Fr, E>::universal_setup(4, 4, 20, rng).unwrap();
+                let srs = KzgMarlin::<E::Fr, E>::universal_setup(100, 100, 100, rng).unwrap();
 
                 let (pk, vk) = KzgMarlin::<E::Fr, E>::index(&srs, circ_no_data).unwrap();
                 
@@ -274,22 +276,23 @@ mod squarings {
                 let mpc_pk = IndexProverKey::from_public(pk);
 
                 // run the MPC computation
-                let l1 = <MpcPairingEngine<E> as PairingEngine>::Fr::rand(rng);
+                let l1 = <MpcPairingEngine<E> as PairingEngine>::Fr::from(1u8);
                 let l2 = <MpcPairingEngine<E> as PairingEngine>::Fr::from(0u8);
-                let r1 = <MpcPairingEngine<E> as PairingEngine>::Fr::rand(rng);
-                let r2 = <MpcPairingEngine<E> as PairingEngine>::Fr::from(0u8);
+                let r1 = <MpcPairingEngine<E> as PairingEngine>::Fr::from(0u8);
+                let r2 = <MpcPairingEngine<E> as PairingEngine>::Fr::from(1u8);
+                let res = <E as PairingEngine>::Fr::from(1u8);
                 // let mab = a*b;
                 // reveal output - as usual in MPC
                 // let out = mab.reveal();
                 
                 // set output as the public input and the secret shares of the circuit input as the private input to marlin
-                let public_inputs = vec![];
+                let public_inputs = vec![res];
                 let computation_timer = start_timer!(|| "do the mpc (cheat)");
                 let circ_data = SimpleDragonnCircuit {
                     l1: Some(l1),
                     l2: Some(l2),
-                    // r1: Some(r1),
-                    // r2: Some(r2)
+                    r1: Some(r1),
+                    r2: Some(r2),
                 };
                 end_timer!(computation_timer);
 
